@@ -44,18 +44,27 @@ if uploaded_file is None:
 # ===============================
 df = pd.read_csv(uploaded_file)
 
-# Convert everything to string first
-df = df.astype(str)
+cleaned_df = df.copy()
 
-# Remove units, commas, symbols (keep digits, dot, minus)
-df = df.replace(
-    to_replace=r"[^\d\.\-]+",
-    value="",
-    regex=True
-)
+for col in df.columns:
+    # Try numeric conversion WITHOUT regex first
+    try:
+        cleaned_df[col] = pd.to_numeric(df[col])
+    except Exception:
+        # If it fails, try cleaning units then convert
+        try:
+            cleaned_df[col] = (
+                df[col]
+                .astype(str)
+                .str.replace(",", "", regex=False)
+                .str.replace(r"[^\d\.\-]+", "", regex=True)
+                .replace("", np.nan)
+                .astype(float)
+            )
+        except Exception:
+            # Leave column as-is (categorical / ID / tag)
+            cleaned_df[col] = df[col]
 
-# Convert to numeric where possible
-df = df.apply(pd.to_numeric, errors="ignore")
 
 # ===============================
 # Data Preview
